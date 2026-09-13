@@ -1,0 +1,3 @@
+10001|Rohan Sharma|rohan@example.com|0123456789|Savings|6000.00|rohan2026|2026-09-13
+10002|Priya Nair|priya@example.com|0123456780|Current|9000.00|pass0002|2026-09-13
+10003|Wei Ling|weiling@example.com|0123456781|Savings|3000.00|pass0003|2026-09-13
