@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  SERVED
+  CANCELLED
+}
+
+model Restaurant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  currency     String   @default("USD")
+  taxRateBps   Int      @default(0) // tax rate in basis points (1/100 of a percent), e.g. 825 = 8.25%
+  logoUrl      String?
+  primaryColor String   @default("#0f172a")
+  address      String?
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users      User[]
+  categories Category[]
+  menuItems  MenuItem[]
+  tables     Table[]
+  orders     Order[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(OWNER)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([restaurantId])
+}
+
+model Category {
+  id           String   @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  menuItems MenuItem[]
+
+  @@index([restaurantId])
+}
+
+model MenuItem {
+  id           String   @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  priceCents   Int
+  imageUrl     String?
+  isAvailable  Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  optionGroups OptionGroup[]
+  orderItems   OrderItem[]
+
+  @@index([restaurantId])
+  @@index([categoryId])
+}
+
+model OptionGroup {
+  id          String  @id @default(cuid())
+  menuItemId  String
+  menuItem    MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name        String
+  required    Boolean @default(false)
+  multiSelect Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  choices OptionChoice[]
+
+  @@index([menuItemId])
+}
+
+model OptionChoice {
+  id              String  @id @default(cuid())
+  optionGroupId   String
+  optionGroup     OptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+  name            String
+  priceDeltaCents Int     @default(0)
+  sortOrder       Int     @default(0)
+
+  @@index([optionGroupId])
+}
+
+model Table {
+  id           String   @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  label        String
+  token        String   @unique @default(cuid())
+  createdAt    DateTime @default(now())
+
+  orders Order[]
+
+  @@index([restaurantId])
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId       String?
+  table         Table?   @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  customerName  String?
+  status        OrderStatus @default(PENDING)
+  subtotalCents Int
+  taxCents      Int
+  totalCents    Int
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([restaurantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId      String?
+  menuItem        MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  nameSnapshot    String
+  unitPriceCents  Int
+  quantity        Int
+  selectedOptions Json?
+  notes           String?
+
+  @@index([orderId])
+}
